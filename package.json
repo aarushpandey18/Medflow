@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "dev:server": "node --watch server/index.js",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "start:full": "concurrently \"npm run start\" \"npm run start:server\"",
     "start:server": "node server/index.js"
   },
   "dependencies": {

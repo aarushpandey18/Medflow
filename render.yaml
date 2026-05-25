@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: medflow-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:full
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 4000
+      - key: BACKEND_INTERNAL_URL
+        value: http://localhost:4000

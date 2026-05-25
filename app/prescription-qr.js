@@ -7,11 +7,16 @@ export default function PrescriptionQr({ prescriptionId }) {
   const [src, setSrc] = useState("");
 
   useEffect(() => {
+    if (!prescriptionId || typeof window === "undefined") {
+      return;
+    }
+
     const configuredAppBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL;
+    const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
+      window.location.hostname,
+    );
     const appBaseUrl =
-      typeof window !== "undefined" && window.location.hostname !== "localhost"
-        ? window.location.origin
-        : configuredAppBaseUrl || window.location.origin;
+      isLocalhost && configuredAppBaseUrl ? configuredAppBaseUrl : window.location.origin;
     const verificationUrl = `${appBaseUrl}/verify/${prescriptionId}`;
 
     QRCode.toDataURL(verificationUrl, {

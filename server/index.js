@@ -6,7 +6,7 @@ import medicineRoutes from "./medicines.js";
 import prescriptionRoutes from "./prescriptions.js";
 
 const app = express();
-const port = Number(process.env.PORT ?? 4000);
+const port = Number(process.env.API_PORT ?? 4000);
 const host = process.env.HOST ?? "0.0.0.0";
 
 app.use(cors());
