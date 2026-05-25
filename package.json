@@ -9,7 +9,7 @@
     "dev:server": "node --watch server/index.js",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
-    "start:full": "concurrently \"npm run start\" \"npm run start:server\"",
+    "start:full": "node server/start-production.js",
     "start:server": "node server/index.js"
   },
   "dependencies": {
