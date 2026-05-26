@@ -81,6 +81,30 @@ export function usesFirebase() {
   return Boolean(process.env.FIREBASE_PROJECT_ID && !process.env.MONGODB_URI);
 }
 
+export function getStorageInfo() {
+  if (process.env.MONGODB_URI) {
+    return {
+      provider: "mongodb",
+      database: mongoDatabaseName,
+      collection: mongoCollectionName,
+    };
+  }
+
+  if (usesFirebase()) {
+    return {
+      provider: "firebase",
+      database: process.env.FIREBASE_PROJECT_ID,
+      collection: "prescriptions",
+    };
+  }
+
+  return {
+    provider: "local",
+    database: "data/prescriptions.json",
+    collection: "prescriptions",
+  };
+}
+
 async function getMongoCollectionIfConfigured() {
   if (!process.env.MONGODB_URI) {
     return null;
