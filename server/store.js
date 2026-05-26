@@ -2,6 +2,7 @@ import { MongoClient } from "mongodb";
 
 let firebaseStorePromise;
 let mongoClientPromise;
+let mongoIndexPromise;
 
 const memoryStore = new Map();
 const localDataFile = new URL("../data/prescriptions.json", import.meta.url);
@@ -139,12 +140,24 @@ async function getMongoCollectionIfConfigured() {
 
   if (!mongoClientPromise) {
     const client = new MongoClient(process.env.MONGODB_URI);
-    mongoClientPromise = client.connect();
+    mongoClientPromise = client.connect().catch((error) => {
+      mongoClientPromise = null;
+      mongoIndexPromise = null;
+      throw error;
+    });
   }
 
   const client = await mongoClientPromise;
   const collection = client.db(mongoDatabaseName).collection(mongoCollectionName);
-  await collection.createIndex({ prescriptionId: 1 }, { unique: true });
+
+  if (!mongoIndexPromise) {
+    mongoIndexPromise = collection.createIndex({ prescriptionId: 1 }, { unique: true }).catch((error) => {
+      mongoIndexPromise = null;
+      throw error;
+    });
+  }
+
+  await mongoIndexPromise;
   return collection;
 }
 
