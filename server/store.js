@@ -105,6 +105,33 @@ export function getStorageInfo() {
   };
 }
 
+export async function checkStorageConnection() {
+  try {
+    const mongoCollection = await getMongoCollectionIfConfigured();
+
+    if (mongoCollection) {
+      await mongoCollection.db.command({ ping: 1 });
+      return {
+        ok: true,
+        provider: "mongodb",
+      };
+    }
+
+    return {
+      ok: true,
+      provider: getStorageInfo().provider,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      provider: getStorageInfo().provider,
+      errorName: error.name,
+      errorCode: error.codeName ?? error.code ?? null,
+      message: sanitizeConnectionError(error.message),
+    };
+  }
+}
+
 async function getMongoCollectionIfConfigured() {
   if (!process.env.MONGODB_URI) {
     return null;
@@ -119,6 +146,10 @@ async function getMongoCollectionIfConfigured() {
   const collection = client.db(mongoDatabaseName).collection(mongoCollectionName);
   await collection.createIndex({ prescriptionId: 1 }, { unique: true });
   return collection;
+}
+
+function sanitizeConnectionError(message = "") {
+  return message.replace(/mongodb(\+srv)?:\/\/[^@\s]+@/gi, "mongodb$1://<credentials>@");
 }
 
 async function getFirestoreIfConfigured() {

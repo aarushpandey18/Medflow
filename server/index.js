@@ -4,7 +4,7 @@ import express from "express";
 import path from "node:path";
 import medicineRoutes from "./medicines.js";
 import prescriptionRoutes from "./prescriptions.js";
-import { getStorageInfo } from "./store.js";
+import { checkStorageConnection, getStorageInfo } from "./store.js";
 
 const app = express();
 const port = Number(process.env.API_PORT ?? 4000);
@@ -14,11 +14,14 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use("/uploads", express.static(path.resolve("uploads")));
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", async (_req, res) => {
+  const connection = await checkStorageConnection();
+
   res.json({
     status: "ok",
     service: "medical-prescription-api",
     storage: getStorageInfo(),
+    connection,
   });
 });
 
