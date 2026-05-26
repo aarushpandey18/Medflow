@@ -2,13 +2,26 @@
 
 ## Setup
 
-1. Run `npm run dev:full` for a local demo using in-memory prescription storage.
-2. To persist records with Firebase, copy `.env.example` to `.env`.
-3. Set `FIREBASE_PROJECT_ID`.
-4. Provide Firebase Admin credentials with either:
+1. Copy `.env.example` to `.env`.
+2. To persist records with MongoDB Atlas, set `MONGODB_URI`.
+3. Optional: set `MONGODB_DB` and `MONGODB_COLLECTION`. Defaults are `medflow` and `prescriptions`.
+4. Run `npm run dev:full`.
+
+MongoDB Atlas example:
+
+```bash
+MONGODB_URI=mongodb+srv://username:password@cluster0.example.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB=medflow
+MONGODB_COLLECTION=prescriptions
+```
+
+If `MONGODB_URI` is set, MongoDB is used first. Firebase remains supported as a fallback:
+
+1. Set `FIREBASE_PROJECT_ID`.
+2. Provide Firebase Admin credentials with either:
    - `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
    - `FIREBASE_SERVICE_ACCOUNT_BASE64=<base64-encoded-service-account-json>`
-5. Start the API with `npm run dev:server`.
+3. Start the API with `npm run dev:server`.
 
 ## Routes
 

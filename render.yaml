@@ -8,7 +8,15 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 20.20.2
       - key: API_PORT
         value: 4000
       - key: BACKEND_INTERNAL_URL
         value: http://localhost:4000
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: medflow
+      - key: MONGODB_COLLECTION
+        value: prescriptions
