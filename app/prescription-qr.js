@@ -11,28 +11,30 @@ export default function PrescriptionQr({ prescriptionId }) {
       return;
     }
 
-    const configuredAppBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL;
+    const configuredAppBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL?.replace(/\/$/, "");
     const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
       window.location.hostname,
     );
     const appBaseUrl =
       isLocalhost && configuredAppBaseUrl ? configuredAppBaseUrl : window.location.origin;
-    const verificationUrl = `${appBaseUrl}/verify/${prescriptionId}`;
+    const verificationUrl = `${appBaseUrl}/verify/${encodeURIComponent(prescriptionId)}`;
 
     QRCode.toDataURL(verificationUrl, {
       color: {
         dark: "#082f49",
         light: "#ffffff",
       },
-      margin: 1,
-      width: 180,
+      // A larger source image and clear quiet zone make camera scans reliable,
+      // including when the QR is displayed on a desktop screen.
+      margin: 3,
+      width: 512,
     }).then(setSrc);
   }, [prescriptionId]);
 
   return src ? (
     <img
       alt={`QR code for prescription ${prescriptionId}`}
-      className="h-44 w-44 rounded-md bg-white p-3 shadow-sm"
+      className="h-52 w-52 rounded-md bg-white shadow-sm"
       src={src}
     />
   ) : (

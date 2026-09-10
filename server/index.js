@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import multer from "multer";
 import path from "node:path";
 import medicineRoutes from "./medicines.js";
 import prescriptionRoutes from "./prescriptions.js";
@@ -30,8 +31,22 @@ app.use("/api/medicines", medicineRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
+
+  if (error instanceof multer.MulterError) {
+    const isTooLarge = error.code === "LIMIT_FILE_SIZE";
+    return res.status(isTooLarge ? 413 : 400).json({
+      error: isTooLarge
+        ? "File is too large. The maximum upload size is 10 MB."
+        : "The uploaded file could not be processed.",
+    });
+  }
+
+  if (error.message === "Only PDF, JPG, PNG, and WEBP files are allowed") {
+    return res.status(400).json({ error: error.message });
+  }
+
   res.status(500).json({
-    error: "Internal server error",
+    error: "Unable to save the prescription. Check that persistent storage is configured.",
   });
 });
 
