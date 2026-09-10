@@ -29,7 +29,7 @@ app.get("/api/health", async (_req, res) => {
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/medicines", medicineRoutes);
 
-app.use((error, _req, res, _next) => {
+app.use(async (error, _req, res, _next) => {
   console.error(error);
 
   if (error instanceof multer.MulterError) {
@@ -45,8 +45,18 @@ app.use((error, _req, res, _next) => {
     return res.status(400).json({ error: error.message });
   }
 
+  const storage = getStorageInfo();
+  const connection = await checkStorageConnection();
+  const storageUnavailable = !connection.ok;
+
   res.status(500).json({
-    error: "Unable to save the prescription. Check that persistent storage is configured.",
+    error: storageUnavailable
+      ? "Prescription database is unavailable. Check the MongoDB connection in Render."
+      : "Unable to save the prescription. Please try again.",
+    storage: storage.provider,
+    // This is intentionally a sanitized, operational error; it never exposes
+    // database credentials to the browser.
+    detail: storageUnavailable ? connection.message : undefined,
   });
 });
 
