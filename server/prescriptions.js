@@ -1,28 +1,18 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
 import {
   findPrescription,
   listPrescriptions,
   savePrescription,
-  usesFirebase,
+  uploadDocument,
 } from "./store.js";
 
 const router = Router();
-const uploadDirectory = path.resolve("uploads");
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDirectory,
-    filename(_req, file, callback) {
-      const extension = path.extname(file.originalname).toLowerCase();
-      callback(null, `${Date.now()}-${crypto.randomBytes(4).toString("hex")}${extension}`);
-    },
-  }),
+  // Vercel's filesystem is read-only, so retain uploads in memory and send
+  // them directly to Supabase Storage.
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
@@ -73,15 +63,14 @@ router.post("/upload", upload.single("file"), async (req, res, next) => {
     }
 
     const prescriptionId = createPrescriptionId();
+    const documentUrl = await uploadDocument(req.file, prescriptionId);
     const payload = {
       ...prescription,
       prescriptionId,
       verified: true,
       documentName: req.file?.originalname ?? null,
-      documentUrl: req.file ? `/uploads/${req.file.filename}` : null,
-      createdAt: usesFirebase()
-        ? (await import("firebase-admin/firestore")).FieldValue.serverTimestamp()
-        : new Date(),
+      documentUrl,
+      createdAt: new Date().toISOString(),
     };
 
     await savePrescription(prescriptionId, payload);

@@ -2,6 +2,9 @@ const backendUrl = process.env.BACKEND_INTERNAL_URL ?? process.env.BACKEND_URL ?
 
 const nextConfig = {
   async rewrites() {
+    if (process.env.VERCEL) {
+      return [];
+    }
     return [
       {
         source: "/api/:path*",

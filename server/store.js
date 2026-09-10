@@ -1,220 +1,63 @@
-import { MongoClient } from "mongodb";
+import crypto from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
-let firebaseStorePromise;
-let mongoClientPromise;
-let mongoIndexPromise;
+let supabase;
 
-const memoryStore = new Map();
-const localDataFile = new URL("../data/prescriptions.json", import.meta.url);
-const mongoDatabaseName = process.env.MONGODB_DB ?? "medflow";
-const mongoCollectionName = process.env.MONGODB_COLLECTION ?? "prescriptions";
+function getSupabase() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabase) supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+  return supabase;
+}
 
 export async function savePrescription(prescriptionId, payload) {
-  const mongoCollection = await getMongoCollectionIfConfigured();
-
-  if (mongoCollection) {
-    await mongoCollection.updateOne(
-      { prescriptionId },
-      { $set: { ...payload, prescriptionId } },
-      { upsert: true },
-    );
-    return;
-  }
-
-  const firestore = await getFirestoreIfConfigured();
-
-  if (firestore) {
-    await firestore.collection("prescriptions").doc(prescriptionId).set(payload);
-    return;
-  }
-
-  await loadLocalPrescriptions();
-  memoryStore.set(prescriptionId, {
-    ...payload,
-    createdAt: new Date(),
-  });
-  await persistLocalPrescriptions();
+  const { error } = await requireSupabase().from("prescriptions").upsert(toRow({ ...payload, prescriptionId }), { onConflict: "prescription_id" });
+  if (error) throw new Error(`Supabase save failed: ${error.message}`);
 }
 
 export async function findPrescription(prescriptionId) {
-  const mongoCollection = await getMongoCollectionIfConfigured();
-
-  if (mongoCollection) {
-    return mongoCollection.findOne({ prescriptionId });
-  }
-
-  const firestore = await getFirestoreIfConfigured();
-
-  if (firestore) {
-    const snapshot = await firestore.collection("prescriptions").doc(prescriptionId).get();
-    return snapshot.exists ? snapshot.data() : null;
-  }
-
-  await loadLocalPrescriptions();
-  return memoryStore.get(prescriptionId) ?? null;
+  const { data, error } = await requireSupabase().from("prescriptions").select("*").eq("prescription_id", prescriptionId).maybeSingle();
+  if (error) throw new Error(`Supabase lookup failed: ${error.message}`);
+  return data ? withSignedDocument(fromRow(data)) : null;
 }
 
 export async function listPrescriptions() {
-  const mongoCollection = await getMongoCollectionIfConfigured();
-
-  if (mongoCollection) {
-    return mongoCollection.find({}).sort({ createdAt: -1 }).limit(25).toArray();
-  }
-
-  const firestore = await getFirestoreIfConfigured();
-
-  if (firestore) {
-    const snapshot = await firestore
-      .collection("prescriptions")
-      .orderBy("createdAt", "desc")
-      .limit(25)
-      .get();
-    return snapshot.docs.map((doc) => doc.data());
-  }
-
-  await loadLocalPrescriptions();
-  return [...memoryStore.values()]
-    .sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt))
-    .slice(0, 25);
+  const { data, error } = await requireSupabase().from("prescriptions").select("*").order("created_at", { ascending: false }).limit(25);
+  if (error) throw new Error(`Supabase list failed: ${error.message}`);
+  return data.map(fromRow);
 }
 
-export function usesFirebase() {
-  return Boolean(process.env.FIREBASE_PROJECT_ID && !process.env.MONGODB_URI);
+export async function uploadDocument(file, prescriptionId) {
+  if (!file) return null;
+  const extension = file.originalname.includes(".") ? file.originalname.split(".").pop().toLowerCase() : "bin";
+  const objectPath = `${prescriptionId}/${crypto.randomUUID()}.${extension}`;
+  const client = requireSupabase();
+  const { error } = await client.storage.from("prescription-files").upload(objectPath, file.buffer, { contentType: file.mimetype, upsert: false });
+  if (error) throw new Error(`Supabase file upload failed: ${error.message}`);
+  return objectPath;
 }
 
-export function getStorageInfo() {
-  if (process.env.MONGODB_URI) {
-    return {
-      provider: "mongodb",
-      database: mongoDatabaseName,
-      collection: mongoCollectionName,
-    };
-  }
-
-  if (usesFirebase()) {
-    return {
-      provider: "firebase",
-      database: process.env.FIREBASE_PROJECT_ID,
-      collection: "prescriptions",
-    };
-  }
-
-  return {
-    provider: "local",
-    database: "data/prescriptions.json",
-    collection: "prescriptions",
-  };
-}
+export function getStorageInfo() { return { provider: "supabase", database: "Postgres", collection: "prescriptions" }; }
 
 export async function checkStorageConnection() {
   try {
-    const mongoCollection = await getMongoCollectionIfConfigured();
-
-    if (mongoCollection) {
-      await mongoCollection.db.command({ ping: 1 });
-      return {
-        ok: true,
-        provider: "mongodb",
-      };
-    }
-
-    return {
-      ok: true,
-      provider: getStorageInfo().provider,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      provider: getStorageInfo().provider,
-      errorName: error.name,
-      errorCode: error.codeName ?? error.code ?? null,
-      message: sanitizeConnectionError(error.message),
-    };
-  }
+    const { error } = await requireSupabase().from("prescriptions").select("prescription_id", { head: true, count: "exact" }).limit(1);
+    if (error) throw new Error(error.message);
+    return { ok: true, provider: "supabase" };
+  } catch (error) { return { ok: false, provider: "supabase", message: error.message }; }
 }
 
-async function getMongoCollectionIfConfigured() {
-  if (!process.env.MONGODB_URI) {
-    return null;
-  }
-
-  if (!mongoClientPromise) {
-    const client = new MongoClient(process.env.MONGODB_URI);
-    mongoClientPromise = client.connect().catch((error) => {
-      mongoClientPromise = null;
-      mongoIndexPromise = null;
-      throw error;
-    });
-  }
-
-  const client = await mongoClientPromise;
-  const collection = client.db(mongoDatabaseName).collection(mongoCollectionName);
-
-  if (!mongoIndexPromise) {
-    mongoIndexPromise = collection.createIndex({ prescriptionId: 1 }, { unique: true }).catch((error) => {
-      mongoIndexPromise = null;
-      throw error;
-    });
-  }
-
-  await mongoIndexPromise;
-  return collection;
+function requireSupabase() {
+  const client = getSupabase();
+  if (!client) throw new Error("Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  return client;
 }
 
-function sanitizeConnectionError(message = "") {
-  return message.replace(/mongodb(\+srv)?:\/\/[^@\s]+@/gi, "mongodb$1://<credentials>@");
-}
+function toRow(data) { return { prescription_id: data.prescriptionId, patient_name: data.patientName, patient_id: data.patientId, medicine: data.medicine, dosage: data.dosage, doctor_name: data.doctorName, notes: data.notes, verified: data.verified, document_name: data.documentName, document_url: data.documentUrl, created_at: data.createdAt instanceof Date ? data.createdAt.toISOString() : data.createdAt }; }
+function fromRow(row) { return { prescriptionId: row.prescription_id, patientName: row.patient_name, patientId: row.patient_id, medicine: row.medicine, dosage: row.dosage, doctorName: row.doctor_name, notes: row.notes ?? "", verified: row.verified, documentName: row.document_name, documentUrl: row.document_url, createdAt: row.created_at }; }
 
-async function getFirestoreIfConfigured() {
-  if (!process.env.FIREBASE_PROJECT_ID) {
-    return null;
-  }
-
-  if (!firebaseStorePromise) {
-    firebaseStorePromise = import("./firebase-admin.js").then((module) => module.db);
-  }
-
-  return firebaseStorePromise;
-}
-
-function toMillis(value) {
-  if (value?.toMillis) {
-    return value.toMillis();
-  }
-
-  return new Date(value).getTime();
-}
-
-async function loadLocalPrescriptions() {
-  if (memoryStore.size > 0) {
-    return;
-  }
-
-  try {
-    const fs = await import("node:fs/promises");
-    const data = JSON.parse(await fs.readFile(localDataFile, "utf8"));
-
-    if (!Array.isArray(data.prescriptions)) {
-      return;
-    }
-
-    for (const prescription of data.prescriptions) {
-      if (prescription.prescriptionId) {
-        memoryStore.set(prescription.prescriptionId, prescription);
-      }
-    }
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      console.warn("Unable to load local prescriptions", error);
-    }
-  }
-}
-
-async function persistLocalPrescriptions() {
-  const fs = await import("node:fs/promises");
-  await fs.mkdir(new URL("../data/", import.meta.url), { recursive: true });
-  await fs.writeFile(
-    localDataFile,
-    JSON.stringify({ prescriptions: [...memoryStore.values()] }, null, 2),
-  );
+async function withSignedDocument(prescription) {
+  if (!prescription.documentUrl || prescription.documentUrl.startsWith("http")) return prescription;
+  const { data, error } = await requireSupabase().storage.from("prescription-files").createSignedUrl(prescription.documentUrl, 60 * 10);
+  if (error) throw new Error(`Supabase document access failed: ${error.message}`);
+  return { ...prescription, documentUrl: data.signedUrl };
 }
