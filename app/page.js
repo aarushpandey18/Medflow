@@ -19,6 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 import PrescriptionQr from "./prescription-qr";
+import { getApiBaseUrl } from "./api";
 
 const DEMO_DOCTOR_ID = "DR-204";
 const DEMO_PASSWORD = "medflow123";
@@ -31,10 +32,6 @@ const initialForm = {
   notes: "",
   file: null,
 };
-
-function getApiBaseUrl() {
-  return "";
-}
 
 export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -125,7 +122,7 @@ export default function Home() {
         method: "POST",
         body,
       });
-      const data = await response.json();
+      const data = await readResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to save prescription");
@@ -174,7 +171,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ medicines }),
       });
-      const data = await response.json();
+      const data = await readResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to analyze medicines");
@@ -241,6 +238,16 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+async function readResponse(response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const message = await response.text();
+  return { error: message || `Server returned ${response.status}` };
 }
 
 function BrandCard() {

@@ -11,12 +11,10 @@ export default function PrescriptionQr({ prescriptionId }) {
       return;
     }
 
-    const configuredAppBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL?.replace(/\/$/, "");
-    const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
-      window.location.hostname,
-    );
-    const appBaseUrl =
-      isLocalhost && configuredAppBaseUrl ? configuredAppBaseUrl : window.location.origin;
+    // A QR code must point at the frontend currently open in the browser.
+    // This remains correct for custom domains, Render preview URLs, and a
+    // separately deployed frontend without needing a build-time URL.
+    const appBaseUrl = window.location.origin;
     const verificationUrl = `${appBaseUrl}/verify/${encodeURIComponent(prescriptionId)}`;
 
     QRCode.toDataURL(verificationUrl, {

@@ -3,10 +3,7 @@
 import { CircleCheckBig, CircleX, LoaderCircle, Stethoscope } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
-function getApiBaseUrl() {
-  return "";
-}
+import { getApiBaseUrl } from "../../api";
 
 export default function VerifyPrescriptionPage() {
   const { prescriptionId } = useParams();
