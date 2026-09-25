@@ -28,3 +28,112 @@ select,
 textarea {
   font: inherit;
 }
+
+.card {
+  border: 1px solid #e0f2fe;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(8, 47, 73, 0.04);
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  background: #f8fafc;
+  padding: 0.65rem 0.75rem;
+  outline: none;
+  transition: border-color 150ms, background 150ms;
+}
+
+.input:focus {
+  border-color: #0ea5e9;
+  background: #fff;
+}
+
+.button-primary,
+.button-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 150ms, color 150ms;
+}
+
+.button-primary {
+  background: #0369a1;
+  color: white;
+}
+
+.button-primary:hover {
+  background: #075985;
+}
+
+.button-secondary {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.button-secondary:hover {
+  background: #f8fafc;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table th {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.65rem 0.5rem;
+  text-align: left;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0.8rem 0.5rem;
+}

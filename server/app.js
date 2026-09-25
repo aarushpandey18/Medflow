@@ -3,6 +3,7 @@ import express from "express";
 import multer from "multer";
 import medicineRoutes from "./medicines.js";
 import prescriptionRoutes from "./prescriptions.js";
+import medflowRoutes from "./medflow.js";
 import { checkStorageConnection, getStorageInfo } from "./store.js";
 
 const app = express();
@@ -11,6 +12,7 @@ app.use(express.json({ limit: "1mb" }));
 app.get("/api/health", async (_req, res) => res.json({ status: "ok", service: "medical-prescription-api", storage: getStorageInfo(), connection: await checkStorageConnection() }));
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/medicines", medicineRoutes);
+app.use("/api", medflowRoutes);
 app.use(async (error, _req, res, _next) => {
   console.error(error);
   if (error instanceof multer.MulterError) return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: error.code === "LIMIT_FILE_SIZE" ? "File is too large. The maximum upload size is 10 MB." : "The uploaded file could not be processed." });
